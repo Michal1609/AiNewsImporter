@@ -1,24 +1,28 @@
+# List of news sources in format: Url;Type;LastFetched
+# Types: Web, Facebook, Twitter
+# LastFetched format: yyyyMMdd
+# This file will be updated by running the program with 'update-sources' parameter
 
-https://www.microsoft.com/en-us/research/lab/microsoft-research-ai/;20250415
-https://www.artificialintelligence-news.com/;20250415
-https://ai.googleblog.com;20250415
-https://www.deepmind.com/blog;20250415
-https://ai.meta.com/blog;20250415
-https://www.microsoft.com/en-us/research/blog;20250415
-https://www.anthropic.com/index/blog;20250415
-https://mistral.ai/news;20250415
-https://x.ai/blog;20250415
-https://cohere.com/blog;20250415
-https://github.com/deepseek-ai;20250415
-https://the-decoder.com;20250415
-https://venturebeat.com/category/ai;20250415
-https://techcrunch.com/tag/ai;20250415
-https://www.technologyreview.com/ai;20250415
-https://arstechnica.com/information-technology/artificial-intelligence;20250415
-https://www.zdnet.com/topic/ai;20250415
-https://aiweekly.co;20250415
-https://syncedreview.com;20250415
-https://huggingface.co/blog;20250415
-https://paperswithcode.com;20250415
-https://www.lesswrong.com;20250415
-https://aisnake.substack.com;20250415
+https://www.microsoft.com/en-us/research/lab/microsoft-research-ai/;Web;20250415
+https://www.artificialintelligence-news.com/;Web;20250415
+https://ai.googleblog.com;Web;20250415
+https://www.deepmind.com/blog;Web;20250415
+https://ai.meta.com/blog;Web;20250415
+https://www.microsoft.com/en-us/research/blog;Web;20250415
+https://www.anthropic.com/index/blog;Web;20250415
+https://mistral.ai/news;Web;20250415
+https://x.ai/blog;Web;20250415
+https://cohere.com/blog;Web;20250415
+https://github.com/deepseek-ai;Web;20250415
+https://the-decoder.com;Web;20250415
+https://venturebeat.com/category/ai;Web;20250415
+https://techcrunch.com/tag/ai;Web;20250415
+https://www.technologyreview.com/ai;Web;20250415
+https://arstechnica.com/information-technology/artificial-intelligence;Web;20250415
+https://www.zdnet.com/topic/ai;Web;20250415
+https://aiweekly.co;Web;20250415
+https://syncedreview.com;Web;20250415
+https://huggingface.co/blog;Web;20250415
+https://paperswithcode.com;Web;20250415
+https://www.lesswrong.com;Web;20250415
+https://aisnake.substack.com;Web;20250415

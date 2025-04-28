@@ -1,4 +1,5 @@
 using System;
+using NewsImporterApp.Contracts.GetSources;
 
 namespace NewsImport.PlaywrightTest.Models;
 
@@ -13,7 +14,12 @@ public class NewsSourceItem
     public string Url { get; set; } = string.Empty;
     
     /// <summary>
-    /// Date of the last successful scrape
+    /// Type of the news source
     /// </summary>
-    public DateTime LastScrapeDate { get; set; }
+    public SourceType Type { get; set; }
+    
+    /// <summary>
+    /// Date of the last successful fetch
+    /// </summary>
+    public DateTime LastFetched { get; set; }
 } 

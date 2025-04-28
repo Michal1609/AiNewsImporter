@@ -9,5 +9,12 @@ namespace NewsImporterApp.Core
 
         [JsonPropertyName("pageLoadTimeoutMs")]
         public int PageLoadTimeoutMs { get; set; } = 5000;
+
+        // GrznarAi API Configuration
+        [JsonPropertyName("grznarAiApiKey")]
+        public string GrznarAiApiKey { get; set; } = string.Empty;
+
+        [JsonPropertyName("grznarAiBaseUrl")]
+        public string GrznarAiBaseUrl { get; set; } = string.Empty;
     }
 }

@@ -1,4 +1,4 @@
-﻿// See https://aka.ms/new-console-template for more information
+﻿
 using System.Text.Json;
 using NewsImport.PlaywrightTest;
 using NewsImport.PlaywrightTest.Models;
@@ -6,9 +6,8 @@ using NewsImport.PlaywrightTest.Utilities;
 using NewsImporterApp.Core;
 using NewsImporterApp.Services;
 using NewsImporterApp.Models;
-
-
-
+using System.Net.Http.Json;
+using System.Net.Http.Headers;
 
 var excpetions = new List<Exception>();
 var _jsonOptions = CreateJsonOptions();
@@ -77,7 +76,7 @@ foreach (var source in newsSources)
         {
             try
             {
-                if (item.Date != null && item.Date < source.LastScrapeDate.AddDays(-1))
+                if (item.Date != null && item.Date < source.LastFetched.AddDays(-1))
                     continue;
 
                 var baseUri = new Uri(source.Url);
@@ -104,7 +103,7 @@ foreach (var source in newsSources)
                     if (contet == null)
                         continue;
 
-                    if (contet.PublishDate != null && contet.PublishDate < source.LastScrapeDate.AddDays(-1))
+                    if (contet.PublishDate != null && contet.PublishDate < source.LastFetched.AddDays(-1))
                         continue;
 
                     if (item.Date is null && contet.PublishDate is null)
@@ -163,10 +162,13 @@ var result = JsonSerializer.Serialize(allNewsItems, _jsonOptions);
 Console.WriteLine("Ukladama file");
 File.WriteAllText("result.json", result);
 
+// Po odeslání novinek odešleme i chyby
+await SendNewsToWebAsync(allNewsItems);
+await SendErrorsToWebAsync(excpetions);
+
 AggregateException aggregateException = new AggregateException(excpetions);
 //save all exceptions to file
 File.WriteAllText("exceptions.txt", aggregateException.ToString());
-
 
 static async Task<AppConfig?> LoadConfigAsync(JsonSerializerOptions jsonOptions)
 {
@@ -220,51 +222,192 @@ static JsonSerializerOptions CreateJsonOptions()
 
 static async Task<List<NewsSourceItem>?> LoadNewsSourcesAsync()
 {
-    //return new List<NewsSourceItem> { new NewsSourceItem {  LastScrapeDate =  DateTime.Now, Url = "https://openai.com/news/" } };
     try
     {
-        string sourcesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "sources.txt");
-        var sources = new List<NewsSourceItem>();
-
-        // Pokud soubor neexistuje, vytvoříme jej
-        if (!File.Exists(sourcesPath))
+        // Inicializace služby pro práci se zdroji
+        var sourceFileService = new SourceFileService();
+        
+        // Inicializace a konfigurace GrznarAi služby
+        var config = await LoadConfigAsync(CreateJsonOptions());
+        if (config == null)
         {
-            return new List<NewsSourceItem>();
+            Console.WriteLine("Nelze načíst konfiguraci pro API.");
+            return null;
         }
-
-        // Načtení a parsing zdrojů
-        string[] lines = await File.ReadAllLinesAsync(sourcesPath);
-        foreach (string line in lines)
+        
+        // Vytvoření instance GrznarAi služby
+        var grznarAiService = new GrznarAiService(config);
+        
+        // Získání zdrojů z API
+        var apiResponse = await grznarAiService.GetSourcesAsync();
+        if (apiResponse == null || apiResponse.Sources == null || apiResponse.Sources.Count == 0)
         {
-            if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
-                continue;
-
-            string[] parts = line.Split(';');
-            if (parts.Length != 2)
+            Console.WriteLine("Nepodařilo se získat zdroje z API nebo API nevrátilo žádné zdroje.");
+            
+            // Pokud nelze získat zdroje z API, pokusíme se načíst zdroje ze souboru
+            var existingSources = await sourceFileService.LoadSourcesAsync();
+            if (existingSources.Count == 0)
             {
-                Console.WriteLine($"Neplatný formát řádku: {line}");
-                continue;
+                Console.WriteLine("Nelze načíst zdroje ze souboru.");
+                return null;
             }
-
-            if (!DateTime.TryParseExact(parts[1], "yyyyMMdd", null,
-                System.Globalization.DateTimeStyles.None, out DateTime lastScrapeDate))
+            
+            // Převedeme slovník zdrojů na seznam NewsSourceItem
+            return existingSources.Select(s => new NewsSourceItem
             {
-                Console.WriteLine($"Neplatný formát data: {parts[1]}");
-                continue;
-            }
-
-            sources.Add(new NewsSourceItem
-            {
-                Url = parts[0],
-                LastScrapeDate = lastScrapeDate
-            });
+                Url = s.Key,
+                Type = s.Value.Type,
+                LastFetched = s.Value.LastFetched
+            }).ToList();
         }
-
-        return sources;
+        
+        Console.WriteLine($"Úspěšně načteno {apiResponse.Sources.Count} zdrojů z API.");
+        
+        // Aktualizace zdrojů v souboru
+        var updatedSources = await sourceFileService.UpdateSourcesFromApiAsync(apiResponse.Sources);
+        
+        // Převedeme slovník zdrojů na seznam NewsSourceItem
+        var sourceItems = updatedSources.Select(s => new NewsSourceItem
+        {
+            Url = s.Key,
+            Type = s.Value.Type,
+            LastFetched = s.Value.LastFetched
+        }).ToList();
+        
+        Console.WriteLine($"Zdroje byly aktualizovány. Celkem {sourceItems.Count} zdrojů.");
+        return sourceItems;
     }
     catch (Exception ex)
     {
         Console.WriteLine($"Chyba při načítání zdrojů: {ex.Message}");
         return null;
+    }
+}
+
+static async Task SendNewsToWebAsync(List<NewsItem> newsItems)
+{
+    try
+    {
+        // Načtení konfigurace
+        var config = await LoadConfigAsync(CreateJsonOptions());
+        if (config == null)
+        {
+            Console.WriteLine("Nelze načíst konfiguraci pro API.");
+            return;
+        }
+        
+        // Vytvoření HttpClient
+        var httpClient = new HttpClient();
+        httpClient.BaseAddress = new Uri(config.GrznarAiBaseUrl);
+        httpClient.DefaultRequestHeaders.Add("X-Api-Key", config.GrznarAiApiKey);
+        httpClient.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+        
+        // Převod NewsItem na AiNewsItemRequest
+        var requestItems = newsItems.Select(item => new NewsImporterApp.Contracts.AddNewsItems.AiNewsItemRequest
+        {
+            TitleEn = item.Title ?? string.Empty,
+            TitleCz = item.Title ?? string.Empty,
+            ContentEn = item.Text,
+            ContentCz = item.ContentCz,
+            SummaryEn = item.SummaryEn,
+            SummaryCz = item.SummaryCz,
+            Url = item.Url ?? string.Empty,
+            ImageUrl = item.ImageUrl,
+            SourceName = item.SourceName ?? string.Empty,
+            PublishedDate = item.Date
+        }).ToList();
+        
+        Console.WriteLine($"Odesílám {requestItems.Count} novinek na server...");
+        
+        // Serializace dat
+        var jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+        var jsonContent = JsonSerializer.Serialize(requestItems, jsonOptions);
+        var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+        
+        // Odeslání požadavku
+        var response = await httpClient.PostAsync("api/ainews/items", content);
+        
+        // Kontrola odpovědi
+        if (response.IsSuccessStatusCode)
+        {
+            Console.WriteLine($"Novinky byly úspěšně odeslány: {response.StatusCode}");
+        }
+        else
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"Chyba při odesílání novinek: {response.StatusCode}");
+            Console.WriteLine($"Detail chyby: {errorContent}");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Výjimka při odesílání novinek: {ex.Message}");
+    }
+}
+
+static async Task SendErrorsToWebAsync(List<Exception> exceptions)
+{
+    try
+    {
+        if (exceptions == null || exceptions.Count == 0)
+        {
+            Console.WriteLine("Žádné chyby k odeslání.");
+            return;
+        }
+        
+        // Načtení konfigurace
+        var config = await LoadConfigAsync(CreateJsonOptions());
+        if (config == null)
+        {
+            Console.WriteLine("Nelze načíst konfiguraci pro API.");
+            return;
+        }
+        
+        // Vytvoření HttpClient
+        var httpClient = new HttpClient();
+        httpClient.BaseAddress = new Uri(config.GrznarAiBaseUrl);
+        httpClient.DefaultRequestHeaders.Add("X-Api-Key", config.GrznarAiApiKey);
+        httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        
+        // Převod výjimek na AiNewsErrorRequest
+        var errorRequests = exceptions.Select(ex => new NewsImporterApp.Contracts.AddErrors.AiNewsErrorRequest
+        {
+            Message = ex.Message,
+            StackTrace = ex.StackTrace,
+            Details = ex.InnerException?.Message,
+            Category = ex.GetType().Name
+        }).ToList();
+        
+        Console.WriteLine($"Odesílám {errorRequests.Count} chyb na server...");
+        
+        // Serializace dat
+        var jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+        var jsonContent = JsonSerializer.Serialize(errorRequests, jsonOptions);
+        var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+        
+        // Odeslání požadavku
+        var response = await httpClient.PostAsync("api/ainews/errors", content);
+        
+        // Kontrola odpovědi
+        if (response.IsSuccessStatusCode)
+        {
+            Console.WriteLine($"Chyby byly úspěšně odeslány: {response.StatusCode}");
+        }
+        else
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"Chyba při odesílání chyb: {response.StatusCode}");
+            Console.WriteLine($"Detail chyby: {errorContent}");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Výjimka při odesílání chyb: {ex.Message}");
     }
 }
