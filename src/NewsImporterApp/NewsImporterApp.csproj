@@ -5,11 +5,12 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <UserSecretsId>5d0a1860-b50f-4dd8-8a66-2055957165b2</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Google.Generative.AI" Version="0.4.0" />
     <PackageReference Include="HtmlAgilityPack" Version="1.11.59" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="9.0.4" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
     <PackageReference Include="Microsoft.Playwright" Version="1.42.0" />
     <PackageReference Include="ReverseMarkdown" Version="3.26.0" />

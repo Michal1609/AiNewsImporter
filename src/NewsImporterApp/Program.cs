@@ -1,5 +1,4 @@
-﻿
-using System.Text.Json;
+﻿using System.Text.Json;
 using NewsImport.PlaywrightTest;
 using NewsImport.PlaywrightTest.Models;
 using NewsImport.PlaywrightTest.Utilities;
@@ -8,6 +7,7 @@ using NewsImporterApp.Services;
 using NewsImporterApp.Models;
 using System.Net.Http.Json;
 using System.Net.Http.Headers;
+using Microsoft.Extensions.Configuration;
 
 var excpetions = new List<Exception>();
 var _jsonOptions = CreateJsonOptions();
@@ -174,6 +174,7 @@ static async Task<AppConfig?> LoadConfigAsync(JsonSerializerOptions jsonOptions)
 {
     try
     {
+        // Konfigurace z appsettings.json
         string configPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appsettings.json");
         if (!File.Exists(configPath))
         {
@@ -199,6 +200,26 @@ static async Task<AppConfig?> LoadConfigAsync(JsonSerializerOptions jsonOptions)
         if (config == null || string.IsNullOrEmpty(config.GoogleApiKey))
         {
             Console.WriteLine("Chybí Google API klíč v konfiguračním souboru.");
+            return null;
+        }
+
+        // Načtení user secrets
+        var configurationBuilder = new ConfigurationBuilder()
+            .AddJsonFile(configPath)
+            .AddUserSecrets<AppConfig>();
+        
+        IConfiguration configuration = configurationBuilder.Build();
+        
+        // Načtení GrznarAiApiKey z user secrets
+        string? apiKey = configuration["GrznarAiApiKey"];
+        if (!string.IsNullOrEmpty(apiKey))
+        {
+            config.GrznarAiApiKey = apiKey;
+        }
+        
+        if (string.IsNullOrEmpty(config.GrznarAiApiKey))
+        {
+            Console.WriteLine("Chybí GrznarAi API klíč v user secrets.");
             return null;
         }
 
