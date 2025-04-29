@@ -16,6 +16,7 @@ public class NewsItem
     /// Titulek zprávy
     /// </summary>
     public string Title { get; set; }
+    public string TitleCz { get; set; }
 
     /// <summary>
     /// Obsah zprávy ve formátu Markdown

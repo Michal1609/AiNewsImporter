@@ -87,7 +87,7 @@ namespace NewsImporterApp.Services
 
             var prompt = $"Níže v textu je Markdown, najdi v něm kompletní text novinky '{title}' a přelož mi ji do českého jazyka. " +
                 $"Také zkus v Markdownu k novince najít datum publikace novinky." +
-                $"Data vrat jako JSON s vlastnostma (ContentCz, SummaryEn, SummaryCz, PublishDate) kde ContentCz bude celý český překlad, SummaryEn bude ten souhrn v angličtině a SummaryCz bude souhrn v češtině a PublishDate bude datum pubklikace novnky pokud existuje a ulož ho formát date pro JSON";
+                $"Data vrat jako JSON s vlastnostma (TitleCz, ContentCz, SummaryEn, SummaryCz, PublishDate) kde TitleCz je titulek přeložený do češtiny, ContentCz bude celý český překlad, SummaryEn bude ten souhrn v angličtině a SummaryCz bude souhrn v češtině a PublishDate bude datum pubklikace novnky pokud existuje a ulož ho formát date pro JSON";
 
 
             return await CallGeminiApiAsync(prompt, markdownContent);
