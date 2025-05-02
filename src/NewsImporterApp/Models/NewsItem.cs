@@ -3,52 +3,52 @@ using System;
 namespace NewsImport.PlaywrightTest.Models;
 
 /// <summary>
-/// Reprezentuje jednu zprávu
+/// Represents a single news item
 /// </summary>
 public class NewsItem
 {
     /// <summary>
-    /// Unikátní identifikátor zprávy
+    /// Unique identifier of the news item
     /// </summary>
     public Guid Id { get; set; } = Guid.NewGuid();
     
     /// <summary>
-    /// Titulek zprávy
+    /// News headline
     /// </summary>
     public string Title { get; set; }
     public string TitleCz { get; set; }
 
     /// <summary>
-    /// Obsah zprávy ve formátu Markdown
+    /// News content in Markdown format
     /// </summary>
     public string ContentCz { get; set; } = string.Empty;
     public string SummaryEn { get; set; } = string.Empty;
     public string SummaryCz { get; set; } = string.Empty;
 
     /// <summary>
-    /// URL, odkud byla zpráva stažena
+    /// URL from which the news was downloaded
     /// </summary>
     public string Url { get; set; }
 
     public string ImageUrl { get; set; }
 
     /// <summary>
-    /// Název zdrojového webu
+    /// Name of the source website
     /// </summary>
     public string SourceName { get; set; }      
     
     /// <summary>
-    /// Datum a čas publikování zprávy
+    /// Date and time of news publication
     /// </summary>
     public DateTime? Date { get; set; }
 
     /// <summary>
-    /// Text zprávy na seznamu zpráv
+    /// News text in the news list
     /// </summary>
     public string Text { get; set; }
 
     /// <summary>
-    /// Datum a čas importu zprávy
+    /// Date and time of news import
     /// </summary>
     public DateTime ImportedDate { get; set; } = DateTime.Now;
 } 

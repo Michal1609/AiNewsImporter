@@ -5,29 +5,29 @@ using System.Text.RegularExpressions;
 namespace NewsImport.PlaywrightTest
 {
     /// <summary>
-    /// Třída pro konverzi HTML do Markdown formátu
+    /// Class for converting HTML to Markdown format
     /// </summary>
     public class MarkdownConverter
     {
         private readonly Converter _converter;
         
         /// <summary>
-        /// Inicializuje novou instanci konvertoru Markdown
+        /// Initializes a new instance of Markdown converter
         /// </summary>
         public MarkdownConverter()
         {
-            // Konfigurace konvertoru ReverseMarkdown
+            // Configuration of ReverseMarkdown converter
             var config = new ReverseMarkdown.Config
             {
-                // Nastavení, jak zacházet s neznámými tagy
+                // Setting how to handle unknown tags
                 UnknownTags = Config.UnknownTagsOption.PassThrough,
-                // Zachovat původní formátování
+                // Preserve original formatting
                 SmartHrefHandling = true,
-                // Nastavení pro seznamy
+                // Settings for lists
                 ListBulletChar = '*',
-                // Nastavení pro text
+                // Settings for text
                 RemoveComments = true,
-                // Zpracování obrázků
+                // Image processing
                 GithubFlavored = true
             };
             
@@ -35,10 +35,10 @@ namespace NewsImport.PlaywrightTest
         }
         
         /// <summary>
-        /// Převede HTML obsah na Markdown
+        /// Converts HTML content to Markdown
         /// </summary>
-        /// <param name="htmlContent">HTML obsah</param>
-        /// <returns>Markdown reprezentace HTML obsahu</returns>
+        /// <param name="htmlContent">HTML content</param>
+        /// <returns>Markdown representation of HTML content</returns>
         public string ConvertToMarkdown(string htmlContent)
         {
             if (string.IsNullOrWhiteSpace(htmlContent))
@@ -48,44 +48,44 @@ namespace NewsImport.PlaywrightTest
             
             try
             {
-                // Předběžné čištění HTML - odstranění skriptů, stylů a dalších nepotřebných elementů
+                // Preliminary HTML cleaning - removing scripts, styles and other unnecessary elements
                 htmlContent = CleanupHtml(htmlContent);
                 
-                // Použití ReverseMarkdown knihovny pro konverzi
+                // Using ReverseMarkdown library for conversion
                 try
                 {
-                    // Vytvoření HtmlAgilityPack dokumentu pro správné parsování
+                    // Creating HtmlAgilityPack document for proper parsing
                     var document = new HtmlDocument();
                     document.LoadHtml(htmlContent);
                     
-                    // Vyčištění dokumentu od javascriptu a zbytečných elementů
+                    // Cleaning document from javascript and unnecessary elements
                     CleanupDocument(document);
                     
-                    // Konverze na Markdown pomocí ReverseMarkdown
+                    // Conversion to Markdown using ReverseMarkdown
                     var markdown = _converter.Convert(document.DocumentNode.OuterHtml);
                     
-                    // Dodatečné čištění výsledného markdownu
+                    // Additional cleaning of the resulting markdown
                     markdown = CleanupMarkdown(markdown);
                     
                     return markdown;
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Chyba při konverzi HTML na Markdown: {ex.Message}");
-                    return $"Chyba při konverzi do Markdown: {ex.Message}";
+                    Console.WriteLine($"Error while converting HTML to Markdown: {ex.Message}");
+                    return $"Error while converting to Markdown: {ex.Message}";
                 }
             }
             catch (Exception ex)
             {
-                return $"Chyba při zpracování HTML: {ex.Message}";
+                return $"Error while processing HTML: {ex.Message}";
             }
         }
         
         /// <summary>
-        /// Vyčistí HTML kód od nepotřebných elementů
+        /// Cleans HTML code from unnecessary elements
         /// </summary>
-        /// <param name="html">HTML kód</param>
-        /// <returns>Vyčištěný HTML kód</returns>
+        /// <param name="html">HTML code</param>
+        /// <returns>Cleaned HTML code</returns>
         private string CleanupHtml(string html)
         {
             if (string.IsNullOrWhiteSpace(html))
@@ -93,31 +93,31 @@ namespace NewsImport.PlaywrightTest
                 return string.Empty;
             }
             
-            // Odstranění JavaScript kódu
+            // Removing JavaScript code
             html = Regex.Replace(html, @"<script\b[^<]*(?:(?!</script>)<[^<]*)*</script>", "", RegexOptions.IgnoreCase);
             
-            // Odstranění CSS stylů
+            // Removing CSS styles
             html = Regex.Replace(html, @"<style\b[^<]*(?:(?!</style>)<[^<]*)*</style>", "", RegexOptions.IgnoreCase);
             
-            // Odstranění komentářů
+            // Removing comments
             html = Regex.Replace(html, @"<!--.*?-->", "", RegexOptions.Singleline);
             
-            // Odstranění zbytečných mezer
+            // Removing unnecessary spaces
             html = Regex.Replace(html, @"\s{2,}", " ");
             
             return html;
         }
         
         /// <summary>
-        /// Vyčistí HTML dokument od nepotřebných elementů pomocí HtmlAgilityPack
+        /// Cleans HTML document from unnecessary elements using HtmlAgilityPack
         /// </summary>
-        /// <param name="document">HTML dokument</param>
+        /// <param name="document">HTML document</param>
         private void CleanupDocument(HtmlDocument document)
         {
-            // Identifikace a odstranění nepotřebných elementů
+            // Identification and removal of unnecessary elements
             var nodesToRemove = new List<HtmlNode>();
             
-            // Najdeme všechny script, style, meta, link, svg, iframe elementy
+            // Finding all script, style, meta, link, svg, iframe elements
             var elementsToRemove = document.DocumentNode.SelectNodes("//script|//style|//meta|//link|//iframe|//svg");
             
             if (elementsToRemove != null)
@@ -128,7 +128,7 @@ namespace NewsImport.PlaywrightTest
                 }
             }
             
-            // Najdeme elementy s konkrétními atributy a třídami, které pravděpodobně obsahují reklamy, navigaci apod.
+            // Finding elements with specific attributes and classes that likely contain ads, navigation, etc.
             var attributeElementsToRemove = document.DocumentNode.SelectNodes("//*[contains(@class, 'ad') or contains(@class, 'ads') or contains(@class, 'banner') or contains(@class, 'cookie') or contains(@class, 'footer') or contains(@class, 'navigation') or contains(@id, 'ad')]");
             
             if (attributeElementsToRemove != null)
@@ -139,7 +139,7 @@ namespace NewsImport.PlaywrightTest
                 }
             }
             
-            // Odstranění nalezených elementů
+            // Removing found elements
             foreach (var node in nodesToRemove)
             {
                 node.Remove();
@@ -147,25 +147,25 @@ namespace NewsImport.PlaywrightTest
         }
         
         /// <summary>
-        /// Dodatečné vyčištění výsledného Markdown textu
+        /// Additional cleaning of the resulting Markdown text
         /// </summary>
         /// <param name="markdown">Markdown text</param>
-        /// <returns>Vyčištěný Markdown text</returns>
+        /// <returns>Cleaned Markdown text</returns>
         private string CleanupMarkdown(string markdown)
         {
-            // Odstranění prázdných řádků na začátku a konci
+            // Removing empty lines at the beginning and end
             markdown = markdown.Trim();
             
-            // Nahrazení více než dvou prázdných řádků za sebou dvěma prázdnými řádky
+            // Replacing more than two empty lines in a row with two empty lines
             markdown = Regex.Replace(markdown, @"\n{3,}", "\n\n");
             
-            // Odstranění nadbytečných mezer na začátku řádků
+            // Removing excessive spaces at the beginning of lines
             markdown = Regex.Replace(markdown, @"(?<=\n) +", "");
             
-            // Oprava odkazů, které mají nadbytečné znaky
+            // Fixing links that have excessive characters
             markdown = Regex.Replace(markdown, @"\[([^\]]+)\]\s*\(([^)]+)\)", "[$1]($2)");
             
-            // Oprava nadpisů, které nemají mezeru za # (např. "#Nadpis" -> "# Nadpis")
+            // Fixing headers that don't have a space after # (e.g. "#Header" -> "# Header")
             for (int i = 1; i <= 6; i++)
             {
                 string prefix = new string('#', i);

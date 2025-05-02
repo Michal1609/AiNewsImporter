@@ -14,99 +14,99 @@ namespace NewsImporterApp.Services
         private IBrowserContext? _context;
 
         /// <summary>
-        /// Inicializuje novou instanci služby Playwright
+        /// Initializes a new instance of the Playwright service
         /// </summary>
         public PlaywrightService()
         {
         }
 
         /// <summary>
-        /// Získá obsah webové stránky pomocí Playwright
+        /// Gets the content of a web page using Playwright
         /// </summary>
-        /// <param name="url">URL adresa stránky</param>
-        /// <param name="timeout">Maximální doba načítání v milisekundách</param>
-        /// <returns>HTML obsah stránky</returns>
+        /// <param name="url">URL address of the page</param>
+        /// <param name="timeout">Maximum loading time in milliseconds</param>
+        /// <returns>HTML content of the page</returns>
         public async Task<string> GetPageContentAsync(string url, int timeout)
         {
-            // Inicializace Playwright, pokud ještě nebyl inicializován
+            // Initialize Playwright if it hasn't been initialized yet
             await InitializePlaywrightAsync();
 
-            // Vytvoření nové stránky
+            // Create a new page
             var page = await _context!.NewPageAsync();
 
             try
             {
-                // Nastavení vlastností stránky pro lepší zobrazení
+                // Set page properties for better display
                 await page.SetViewportSizeAsync(1920, 1080);
 
-                // Navigace na stránku s timeoutem
-                // Čekáme pouze na základní načtení DOMContentLoaded, které je rychlé
+                // Navigate to the page with timeout
+                // We only wait for basic DOMContentLoaded, which is fast
                 var gotoOptions = new PageGotoOptions
                 {
                     Timeout = timeout,
                     WaitUntil = WaitUntilState.DOMContentLoaded
                 };
 
-                // Navigace na stránku
+                // Navigate to the page
                 await page.GotoAsync(url, gotoOptions);
 
-                // Provedeme rychlý scroll pro načtení lazy-loaded obsahu
+                // Perform a quick scroll to load lazy-loaded content
                 await page.EvaluateAsync(@"() => {
                     window.scrollTo(0, document.body.scrollHeight / 2);
                 }");
 
-                // Počkáme 500ms, aby se načetl obsah po scrollování
+                // Wait 500ms for content to load after scrolling
                 await Task.Delay(500);
 
-                // Nyní zkusíme počkat na kompletní načtení stránky (NetworkIdle)
-                // Pokud se stránka načte rychleji, metoda proběhne okamžitě
-                // Pokud ne, čeká až do timoutu
+                // Now try to wait for the complete page load (NetworkIdle)
+                // If the page loads faster, the method will complete immediately
+                // If not, it will wait until timeout
                 try
                 {
-                    // Použijeme CancellationToken s časovým limitem
+                    // Use CancellationToken with time limit
                     using var cts = new CancellationTokenSource();
                     cts.CancelAfter(timeout);
 
-                    // Vytvoříme task pro NetworkIdle, který se zruší po vypršení timeoutu
+                    // Create a task for NetworkIdle that will be canceled after timeout
                     var networkIdleTask = page.WaitForLoadStateAsync(LoadState.NetworkIdle,
                         new PageWaitForLoadStateOptions { Timeout = timeout });
 
-                    // Počkáme na dokončení úlohy nebo zrušení
+                    // Wait for task completion or cancellation
                     try
                     {
                         await networkIdleTask;
-                        Console.WriteLine("Stránka je kompletně načtena (NetworkIdle)");
+                        Console.WriteLine("Page is completely loaded (NetworkIdle)");
                     }
                     catch (PlaywrightException ex) when (ex.Message.Contains("timeout") || ex.Message.Contains("cancelled"))
                     {
-                        Console.WriteLine($"NetworkIdle timeout vypršel: {ex.Message}");
+                        Console.WriteLine($"NetworkIdle timeout expired: {ex.Message}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Chyba při čekání na NetworkIdle: {ex.Message}");
+                    Console.WriteLine($"Error waiting for NetworkIdle: {ex.Message}");
                 }
 
-                // Získání HTML obsahu stránky - bez ohledu na to, zda se kompletně načetla
+                // Get HTML content of the page - regardless of whether it loaded completely
                 var content = await page.ContentAsync();
 
-                // Pokud je obsah příliš malý, zkusíme získat více pomocí JavaScriptu
+                // If the content is too small, try to get more using JavaScript
 
                 try
                 {
-                    // Získáme text pomocí JavaScriptu (alternativní přístup)
+                    // Get text using JavaScript (alternative approach)
                     var jsContent = await page.EvaluateAsync<string>("() => document.body.innerHTML");
 
-                    // Pokud je JavaScript verze lepší, použijeme ji
+                    // If the JavaScript version is better, use it
                     if (jsContent.Length > content.Length)
                     {
                         content = jsContent;
-                        Console.WriteLine("Použita JavaScript verze obsahu stránky, která je delší");
+                        Console.WriteLine("Using JavaScript version of page content, which is longer");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Chyba při získávání obsahu pomocí JavaScriptu: {ex.Message}");
+                    Console.WriteLine($"Error getting content using JavaScript: {ex.Message}");
                 }
 
 
@@ -114,22 +114,22 @@ namespace NewsImporterApp.Services
             }
             finally
             {
-                // Uzavření stránky
+                // Close the page
                 await page.CloseAsync();
             }
         }
 
         /// <summary>
-        /// Inicializuje Playwright a vytvoří prohlížeč
+        /// Initializes Playwright and creates a browser
         /// </summary>
         private async Task InitializePlaywrightAsync()
         {
             if (_playwright == null)
             {
-                // Inicializace Playwright
+                // Initialize Playwright
                 _playwright = await Playwright.CreateAsync();
 
-                // Nastavení prohlížeče s parametry pro obejití detekce headless režimu
+                // Set up browser with parameters to bypass headless mode detection
                 _browser = await _playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
                 {
                     Headless = true,
@@ -140,7 +140,7 @@ namespace NewsImporterApp.Services
                     }
                 });
 
-                // Vytvoření kontextu s nastavením pro obejití detekce headless režimu
+                // Create context with settings to bypass headless mode detection
                 _context = await _browser.NewContextAsync(new BrowserNewContextOptions
                 {
                     ViewportSize = new ViewportSize { Width = 1920, Height = 1080 },
@@ -148,7 +148,7 @@ namespace NewsImporterApp.Services
                     IgnoreHTTPSErrors = true
                 });
 
-                // Nastavení JavaScript před každou navigací pro obejití detekce headless
+                // Set JavaScript before each navigation to bypass headless detection
                 await _context.AddInitScriptAsync(@"
                     Object.defineProperty(navigator, 'webdriver', {
                         get: () => false,
@@ -170,7 +170,7 @@ namespace NewsImporterApp.Services
         }
 
         /// <summary>
-        /// Uvolní prostředky Playwright
+        /// Releases Playwright resources
         /// </summary>
         public async ValueTask DisposeAsync()
         {

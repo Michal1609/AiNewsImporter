@@ -92,11 +92,11 @@ namespace NewsImporterApp.Services
             {
                 if (newsItems == null || newsItems.Count == 0)
                 {
-                    Console.WriteLine("Žádné novinky k odeslání.");
+                    Console.WriteLine("No news to send.");
                     return;
                 }
                 
-                // Převod NewsItem na AiNewsItemRequest
+                // Converting NewsItem to AiNewsItemRequest
                 var requestItems = newsItems.Select(item => new AiNewsItemRequest
                 {
                     TitleEn = item.Title ?? string.Empty,
@@ -111,30 +111,30 @@ namespace NewsImporterApp.Services
                     PublishedDate = item.Date
                 }).ToList();
                 
-                Console.WriteLine($"Odesílám {requestItems.Count} novinek na server...");
+                Console.WriteLine($"Sending {requestItems.Count} news items to the server...");
                 
-                // Serializace dat
+                // Serializing data
                 var jsonContent = JsonSerializer.Serialize(requestItems, _jsonOptions);
                 var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
                 
-                // Odeslání požadavku
+                // Sending request
                 var response = await _httpClient.PostAsync("api/ainews/items", content);
                 
-                // Kontrola odpovědi
+                // Checking response
                 if (response.IsSuccessStatusCode)
                 {
-                    Console.WriteLine($"Novinky byly úspěšně odeslány: {response.StatusCode}");
+                    Console.WriteLine($"News were successfully sent: {response.StatusCode}");
                 }
                 else
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    Console.WriteLine($"Chyba při odesílání novinek: {response.StatusCode}");
-                    Console.WriteLine($"Detail chyby: {errorContent}");
+                    Console.WriteLine($"Error sending news: {response.StatusCode}");
+                    Console.WriteLine($"Error details: {errorContent}");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Výjimka při odesílání novinek: {ex.Message}");
+                Console.WriteLine($"Exception while sending news: {ex.Message}");
             }
         }
 
@@ -148,11 +148,11 @@ namespace NewsImporterApp.Services
             {
                 if (exceptions == null || exceptions.Count == 0)
                 {
-                    Console.WriteLine("Žádné chyby k odeslání.");
+                    Console.WriteLine("No errors to send.");
                     return;
                 }
                 
-                // Převod výjimek na AiNewsErrorRequest
+                // Converting exceptions to AiNewsErrorRequest
                 var errorRequests = exceptions.Select(ex => new AiNewsErrorRequest
                 {
                     Message = ex.Message,
@@ -161,30 +161,30 @@ namespace NewsImporterApp.Services
                     Category = ex.GetType().Name
                 }).ToList();
                 
-                Console.WriteLine($"Odesílám {errorRequests.Count} chyb na server...");
+                Console.WriteLine($"Sending {errorRequests.Count} errors to the server...");
                 
-                // Serializace dat
+                // Serializing data
                 var jsonContent = JsonSerializer.Serialize(errorRequests, _jsonOptions);
                 var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
                 
-                // Odeslání požadavku
+                // Sending request
                 var response = await _httpClient.PostAsync("api/ainews/errors", content);
                 
-                // Kontrola odpovědi
+                // Checking response
                 if (response.IsSuccessStatusCode)
                 {
-                    Console.WriteLine($"Chyby byly úspěšně odeslány: {response.StatusCode}");
+                    Console.WriteLine($"Errors were successfully sent: {response.StatusCode}");
                 }
                 else
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    Console.WriteLine($"Chyba při odesílání chyb: {response.StatusCode}");
-                    Console.WriteLine($"Detail chyby: {errorContent}");
+                    Console.WriteLine($"Error sending errors: {response.StatusCode}");
+                    Console.WriteLine($"Error details: {errorContent}");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Výjimka při odesílání chyb: {ex.Message}");
+                Console.WriteLine($"Exception while sending errors: {ex.Message}");
             }
         }
     }

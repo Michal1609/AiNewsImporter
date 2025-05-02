@@ -45,7 +45,7 @@ namespace NewsImporterApp.Services
                 try
                 {
                     Console.WriteLine();
-                    Console.WriteLine($"[{++processedCount}/{totalSources}] Zpracovávám: {source.Url}");
+                    Console.WriteLine($"[{++processedCount}/{totalSources}] Processing: {source.Url}");
 
                     var newsItems = await ProcessNewsSourceAsync(source);
                     if (newsItems != null && newsItems.Any())
@@ -55,13 +55,13 @@ namespace NewsImporterApp.Services
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Chyba při zpracování zdroje {source.Url}: {ex.Message}");
+                    Console.WriteLine($"Error processing source {source.Url}: {ex.Message}");
                     exceptions.Add(ex);
                     continue;
                 }
             }
 
-            Console.WriteLine("Mam vsechnuy novinky, delam distinct podle nazvu");
+            Console.WriteLine("Got all news items, making distinct by title");
             return allNewsItems.DistinctBy(x => x.Title).ToList();
         }
 
@@ -73,20 +73,20 @@ namespace NewsImporterApp.Services
             string htmlContent = await _playwrightService.GetPageContentAsync(source.Url, _pageLoadTimeoutMs);
             Console.WriteLine("CleanHtml");
             string cleanedHtml = _htmlCleaner.CleanHtml(htmlContent);
-            Console.WriteLine("ConvertTomarkdow");
+            Console.WriteLine("ConvertToMarkdown");
             string markdownContent = _markdownConverter.ConvertToMarkdown(cleanedHtml);
             Console.WriteLine("GetAllAiNewsFromMarkdownAsync");
             string markdownAnalysisResult = await _geminiService.GetAllAiNewsFromMarkdownAsync(markdownContent);
-            Console.WriteLine("Odstranim json text");
+            Console.WriteLine("Removing json text");
             
             markdownAnalysisResult = CleanJsonMarkdown(markdownAnalysisResult);
             
-            Console.WriteLine("Deserializuji novinky");
+            Console.WriteLine("Deserializing news items");
             var newsItems = JsonSerializer.Deserialize<List<NewsItem>>(markdownAnalysisResult, _jsonOptions);
 
             if (newsItems == null || newsItems.Count == 0)
             {
-                Console.WriteLine("Žádné novinky nebyly nalezeny.");
+                Console.WriteLine("No news items were found.");
                 return sourceNewsItems;
             }
 
@@ -102,7 +102,7 @@ namespace NewsImporterApp.Services
                     var baseUri = new Uri(source.Url);
                     item.Url = new Uri(baseUri, item.Url).ToString();
 
-                    // Získání obsahu novinky
+                    // Getting news content
                     var newsItem = await ProcessNewsItemAsync(item, source);
                     if (newsItem != null)
                     {
@@ -111,12 +111,12 @@ namespace NewsImporterApp.Services
                 }
                 catch (ArgumentNullException ex)
                 {
-                    Console.WriteLine($"Chyba při zpracování obsahu novinky '{item.Title}': {ex.Message}");
+                    Console.WriteLine($"Error processing news content '{item.Title}': {ex.Message}");
                     continue;
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Chyba při zpracování novinky '{item.Title}': {ex.Message}");
+                    Console.WriteLine($"Error processing news item '{item.Title}': {ex.Message}");
                     continue;
                 }
             }
@@ -126,19 +126,19 @@ namespace NewsImporterApp.Services
 
         private async Task<NewsItem?> ProcessNewsItemAsync(NewsItem item, NewsSourceItem source)
         {
-            // get content for new
-            Console.WriteLine($"Nacitam novnku: {item.Url}");
+            // get content for news
+            Console.WriteLine($"Loading news item: {item.Url}");
             string htmlContent = await _playwrightService.GetPageContentAsync(item.Url, 10000);
             Console.WriteLine("CleanHtml");
             string cleanedHtml = _htmlCleaner.CleanHtml(htmlContent);
             Console.WriteLine("Markdown");
             string markdownContent = _markdownConverter.ConvertToMarkdown(cleanedHtml);
-            Console.WriteLine("geminy");
+            Console.WriteLine("Gemini");
             string markdownAnalysisResult = await _geminiService.GetContentOfNewFromMarkdownAsync(markdownContent, item.Title);
             
             try
             {
-                Console.WriteLine("Test na json");
+                Console.WriteLine("Testing for json");
                 markdownAnalysisResult = CleanJsonMarkdown(markdownAnalysisResult);
 
                 var content = JsonSerializer.Deserialize<NewsContent>(markdownAnalysisResult);
@@ -151,7 +151,7 @@ namespace NewsImporterApp.Services
                 if (item.Date is null && content.PublishDate is null)
                     return null;
 
-                Console.WriteLine("Ukladam novinku");
+                Console.WriteLine("Saving news item");
                 return new NewsItem
                 {
                     Title = item.Title,
@@ -169,7 +169,7 @@ namespace NewsImporterApp.Services
             }
             catch (JsonException ex)
             {
-                Console.WriteLine($"Chyba při deserializaci obsahu novinky '{item.Title}': {ex.Message}");
+                Console.WriteLine($"Error deserializing news content '{item.Title}': {ex.Message}");
                 throw;
             }
         }

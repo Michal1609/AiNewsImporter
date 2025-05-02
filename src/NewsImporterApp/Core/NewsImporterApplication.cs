@@ -21,34 +21,34 @@ namespace NewsImporterApp.Core
 
         public async Task<int> RunAsync()
         {
-            // 1. Načtení konfigurace
+            // 1. Loading configuration
             var config = await _configService.LoadConfigAsync();
             if (config == null)
             {
-                Console.WriteLine("Nelze načíst konfiguraci. Program bude ukončen.");
+                Console.WriteLine("Unable to load configuration. The program will exit.");
                 return 1;
             }
 
-            // 2. Inicializace služeb
+            // 2. Initializing services
             var sourceFileService = new SourceFileService();
             var apiService = new ApiService(config);
             
-            // 3. Načtení zdrojů novinek
+            // 3. Loading news sources
             var newsSources = await LoadNewsSourcesAsync(sourceFileService, apiService);
             if (newsSources == null || newsSources.Count == 0)
             {
-                Console.WriteLine("Nelze načíst seznam zdrojů. Program bude ukončen.");
+                Console.WriteLine("Unable to load the list of sources. The program will exit.");
                 return 1;
             }
 
-            // 4. Inicializace služeb pro zpracování obsahu
+            // 4. Initializing content processing services
             var geminiService = new GeminiAiService();
             geminiService.SetApiKey(config.GoogleApiKey);
             var htmlCleaner = new HtmlCleaner();
             var markdownConverter = new MarkdownConverter();
             var playwrightService = new PlaywrightService();
 
-            // 5. Vytvoření procesoru novinek
+            // 5. Creating news processor
             var newsProcessor = new NewsProcessor(
                 geminiService,
                 htmlCleaner,
@@ -57,20 +57,20 @@ namespace NewsImporterApp.Core
                 _jsonOptions,
                 config.PageLoadTimeoutMs);
 
-            // 6. Zpracování novinek
+            // 6. Processing news
             var allNewsItems = await newsProcessor.ProcessNewsSourcesAsync(newsSources);
 
-            // 7. Uložení výsledků
-            Console.WriteLine("Desertializaco do string");
+            // 7. Saving results
+            Console.WriteLine("Deserializing to string");
             var result = JsonSerializer.Serialize(allNewsItems, _jsonOptions);
-            Console.WriteLine("Ukladama file");
+            Console.WriteLine("Saving file");
             File.WriteAllText("result.json", result);
 
-            // 8. Odeslání výsledků na server
+            // 8. Sending results to the server
             await apiService.SendNewsToWebAsync(allNewsItems);
             await apiService.SendErrorsToWebAsync(_exceptions);
 
-            // 9. Uložení výjimek do souboru
+            // 9. Saving exceptions to file
             if (_exceptions.Count > 0)
             {
                 AggregateException aggregateException = new AggregateException(_exceptions);
@@ -84,21 +84,21 @@ namespace NewsImporterApp.Core
         {
             try
             {
-                // Získání zdrojů z API
+                // Getting sources from API
                 var apiResponse = await apiService.GetSourcesAsync();
                 if (apiResponse == null || apiResponse.Sources == null || apiResponse.Sources.Count == 0)
                 {
-                    Console.WriteLine("Nepodařilo se získat zdroje z API nebo API nevrátilo žádné zdroje.");
+                    Console.WriteLine("Failed to retrieve sources from API or API did not return any sources.");
                     
-                    // Pokud nelze získat zdroje z API, pokusíme se načíst zdroje ze souboru
+                    // If we can't get sources from API, we try to load sources from file
                     var existingSources = await sourceFileService.LoadSourcesAsync();
                     if (existingSources.Count == 0)
                     {
-                        Console.WriteLine("Nelze načíst zdroje ze souboru.");
+                        Console.WriteLine("Unable to load sources from file.");
                         return null;
                     }
                     
-                    // Převedeme slovník zdrojů na seznam NewsSourceItem
+                    // Converting the dictionary of sources to a list of NewsSourceItem
                     return existingSources.Select(s => new NewsSourceItem
                     {
                         Url = s.Key,
@@ -107,12 +107,12 @@ namespace NewsImporterApp.Core
                     }).ToList();
                 }
                 
-                Console.WriteLine($"Úspěšně načteno {apiResponse.Sources.Count} zdrojů z API.");
+                Console.WriteLine($"Successfully loaded {apiResponse.Sources.Count} sources from API.");
                 
-                // Aktualizace zdrojů v souboru
+                // Updating sources in file
                 var updatedSources = await sourceFileService.UpdateSourcesFromApiAsync(apiResponse.Sources);
                 
-                // Převedeme slovník zdrojů na seznam NewsSourceItem
+                // Converting the dictionary of sources to a list of NewsSourceItem
                 var sourceItems = updatedSources.Select(s => new NewsSourceItem
                 {
                     Url = s.Key,
@@ -120,12 +120,12 @@ namespace NewsImporterApp.Core
                     LastFetched = s.Value.LastFetched
                 }).ToList();
                 
-                Console.WriteLine($"Zdroje byly aktualizovány. Celkem {sourceItems.Count} zdrojů.");
+                Console.WriteLine($"Sources have been updated. Total {sourceItems.Count} sources.");
                 return sourceItems;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Chyba při načítání zdrojů: {ex.Message}");
+                Console.WriteLine($"Error loading sources: {ex.Message}");
                 _exceptions.Add(ex);
                 return null;
             }

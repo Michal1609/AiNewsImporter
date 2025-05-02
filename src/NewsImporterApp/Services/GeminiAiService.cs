@@ -16,7 +16,7 @@ namespace NewsImporterApp.Services
         private string _modelName;
 
         /// <summary>
-        /// Inicializuje novou instanci třídy GeminiAiService
+        /// Initializes a new instance of the GeminiAiService class
         /// </summary>
         public GeminiAiService()
         {
@@ -30,10 +30,10 @@ namespace NewsImporterApp.Services
         }
 
         /// <summary>
-        /// Nastaví API klíč pro přístup ke Google Gemini API
+        /// Sets the API key for access to Google Gemini API
         /// </summary>
-        /// <param name="apiKey">API klíč</param>
-        /// <param name="modelName">Volitelný název modelu</param>
+        /// <param name="apiKey">API key</param>
+        /// <param name="modelName">Optional model name</param>
         public void SetApiKey(string apiKey, string modelName = "gemini-2.0-flash-lite")
         {
             _apiKey = apiKey;
@@ -41,15 +41,15 @@ namespace NewsImporterApp.Services
         }
 
         /// <summary>
-        /// Analyzuje HTML obsah pomocí Gemini AI a hledá novinky týkající se AI
+        /// Analyzes HTML content using Gemini AI and looks for AI-related news
         /// </summary>
-        /// <param name="htmlContent">HTML obsah k analýze</param>
-        /// <returns>Výsledek analýzy jako JSON</returns>
+        /// <param name="htmlContent">HTML content to analyze</param>
+        /// <returns>Analysis result as JSON</returns>
         public async Task<string> GetAllAiNewsFromMarkdown(string htmlContent)
         {
             if (string.IsNullOrEmpty(_apiKey))
             {
-                throw new InvalidOperationException("API klíč není nastaven. Použijte metodu SetApiKey().");
+                throw new InvalidOperationException("API key is not set. Use the SetApiKey() method.");
             }
 
             var prompt = "Najdi v uvedeném HTML textu všechny novinky týkající se AI, a v json formátu mi vrať název novinky, " +
@@ -60,15 +60,15 @@ namespace NewsImporterApp.Services
         }
 
         /// <summary>
-        /// Analyzuje Markdown obsah pomocí Gemini AI a hledá novinky týkající se AI
+        /// Analyzes Markdown content using Gemini AI and looks for AI-related news
         /// </summary>
-        /// <param name="markdownContent">Markdown obsah k analýze</param>
-        /// <returns>Výsledek analýzy jako JSON</returns>
+        /// <param name="markdownContent">Markdown content to analyze</param>
+        /// <returns>Analysis result as JSON</returns>
         public async Task<string> GetAllAiNewsFromMarkdownAsync(string markdownContent)
         {
             if (string.IsNullOrEmpty(_apiKey))
             {
-                throw new InvalidOperationException("API klíč není nastaven. Použijte metodu SetApiKey().");
+                throw new InvalidOperationException("API key is not set. Use the SetApiKey() method.");
             }
 
             var prompt = "Najdi v uvedeném Markdown textu všechny novinky týkající se AI, a v json formátu mi vrať název novinky, " +
@@ -82,7 +82,7 @@ namespace NewsImporterApp.Services
         {
             if (string.IsNullOrEmpty(_apiKey))
             {
-                throw new InvalidOperationException("API klíč není nastaven. Použijte metodu SetApiKey().");
+                throw new InvalidOperationException("API key is not set. Use the SetApiKey() method.");
             }
 
             var prompt = $"Níže v textu je Markdown, najdi v něm kompletní text novinky '{title}' a přelož mi ji do českého jazyka. " +
@@ -94,17 +94,17 @@ namespace NewsImporterApp.Services
         }
 
         /// <summary>
-        /// Volá Gemini API s daným promptem a obsahem
+        /// Calls Gemini API with the given prompt and content
         /// </summary>
-        /// <param name="prompt">Textový dotaz pro model</param>
-        /// <param name="content">Obsah k analýze</param>
-        /// <returns>Odpověď API jako řetězec</returns>
+        /// <param name="prompt">Text query for the model</param>
+        /// <param name="content">Content to analyze</param>
+        /// <returns>API response as a string</returns>
         private async Task<string> CallGeminiApiAsync(string prompt, string content)
         {
             string fullModelName = $"models/{_modelName}";
             string requestUrl = $"{BaseApiUrl}/{fullModelName}:generateContent?key={_apiKey}";
 
-            // Sestavení těla požadavku
+            // Building the request body
             var requestBody = new
             {
                 contents = new[]
@@ -130,7 +130,7 @@ namespace NewsImporterApp.Services
             {
                 try
                 {
-                    // Extrahujeme text z odpovědi
+                    // Extracting text from the response
                     using JsonDocument doc = JsonDocument.Parse(responseString);
                     JsonElement root = doc.RootElement;
 
@@ -154,14 +154,14 @@ namespace NewsImporterApp.Services
                 }
                 catch (JsonException ex)
                 {
-                    Console.Error.WriteLine($"Chyba při zpracování JSON odpovědi: {ex.Message}");
-                    return responseString; // Vracíme původní odpověď v případě chyby
+                    Console.Error.WriteLine($"Error processing JSON response: {ex.Message}");
+                    return responseString; // Returning the original response in case of error
                 }
             }
             else
             {
-                Console.Error.WriteLine($"Chyba API: HTTP Status Kód {response.StatusCode}");
-                Console.Error.WriteLine($"Odpověď API:\n{responseString}");
+                Console.Error.WriteLine($"API Error: HTTP Status Code {response.StatusCode}");
+                Console.Error.WriteLine($"API Response:\n{responseString}");
                 return string.Empty;
             }
         }

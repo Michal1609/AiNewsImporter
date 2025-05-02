@@ -10,43 +10,43 @@ namespace NewsImporterApp.Contracts.AddNewsItems
     public class AiNewsItemRequest
     {
         /// <summary>
-        /// Titulek v angličtině
+        /// Title in English
         /// </summary>
         [Required]
         [StringLength(200)]
         public string TitleEn { get; set; } = string.Empty;
 
         /// <summary>
-        /// Titulek v češtině
+        /// Title in Czech
         /// </summary>
         [Required]
         [StringLength(200)]
         public string TitleCz { get; set; } = string.Empty;
 
         /// <summary>
-        /// Obsah v angličtině
+        /// Content in English
         /// </summary>
         public string? ContentEn { get; set; }
 
         /// <summary>
-        /// Obsah v češtině
+        /// Content in Czech
         /// </summary>
         public string? ContentCz { get; set; }
 
         /// <summary>
-        /// Souhrn v angličtině
+        /// Summary in English
         /// </summary>
         [StringLength(1000)]
         public string? SummaryEn { get; set; }
 
         /// <summary>
-        /// Souhrn v češtině
+        /// Summary in Czech
         /// </summary>
         [StringLength(1000)]
         public string? SummaryCz { get; set; }
 
         /// <summary>
-        /// URL originálního zdroje
+        /// URL of the original source
         /// </summary>
         [Required]
         [Url]
@@ -54,21 +54,21 @@ namespace NewsImporterApp.Contracts.AddNewsItems
         public string Url { get; set; } = string.Empty;
 
         /// <summary>
-        /// URL obrázku
+        /// Image URL
         /// </summary>
         [Url]
         [StringLength(500)]
         public string? ImageUrl { get; set; }
 
         /// <summary>
-        /// Název zdroje
+        /// Source name
         /// </summary>
         [Required]
         [StringLength(100)]
         public string SourceName { get; set; } = string.Empty;
 
         /// <summary>
-        /// Datum publikace
+        /// Publication date
         /// </summary>
         public DateTime? PublishedDate { get; set; }
     }

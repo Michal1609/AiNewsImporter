@@ -9,12 +9,12 @@ namespace NewsImporterApp.Contracts.GetSources
     public class AiNewsSourceListResponse
     {
         /// <summary>
-        /// Seznam zdrojů
+        /// List of sources
         /// </summary>
         public List<AiNewsSourceResponse> Sources { get; set; } = new();
 
         /// <summary>
-        /// Celkový počet zdrojů
+        /// Total count of sources
         /// </summary>
         public int TotalCount { get; set; }
     }

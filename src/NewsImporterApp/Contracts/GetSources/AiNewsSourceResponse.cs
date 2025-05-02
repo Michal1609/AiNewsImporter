@@ -11,38 +11,38 @@ namespace NewsImporterApp.Contracts.GetSources
     public class AiNewsSourceResponse
     {
         /// <summary>
-        /// ID zdroje
+        /// Source ID
         /// </summary>
         public int Id { get; set; }
 
         /// <summary>
-        /// Název zdroje
+        /// Source name
         /// </summary>
         public string Name { get; set; } = string.Empty;
 
         /// <summary>
-        /// URL zdroje
+        /// Source URL
         /// </summary>
         public string Url { get; set; } = string.Empty;
 
         /// <summary>
-        /// Typ zdroje (RSS, Web, API, etc.)
+        /// Source type (RSS, Web, API, etc.)
         /// </summary>
         [JsonConverter(typeof(JsonStringEnumConverter))]
         public SourceType Type { get; set; }
 
         /// <summary>
-        /// Zda je zdroj aktivní
+        /// Indicates if the source is active
         /// </summary>
         public bool IsActive { get; set; }
 
         /// <summary>
-        /// Datum posledního stažení
+        /// Date of last fetch
         /// </summary>
         public DateTime? LastFetched { get; set; }
 
         /// <summary>
-        /// Dodatečné parametry pro stažení (JSON)
+        /// Additional parameters for fetching (JSON)
         /// </summary>
         public string? Parameters { get; set; }        
     }
