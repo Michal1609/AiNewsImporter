@@ -100,7 +100,7 @@ namespace NewsImporterApp.Services
                 var requestItems = newsItems.Select(item => new AiNewsItemRequest
                 {
                     TitleEn = item.Title ?? string.Empty,
-                    TitleCz = item.Title ?? string.Empty,
+                    TitleCz = item.TitleCz ?? string.Empty,
                     ContentEn = item.Text,
                     ContentCz = item.ContentCz,
                     SummaryEn = item.SummaryEn,
