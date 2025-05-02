@@ -193,8 +193,6 @@ namespace NewsImporterApp.Services
             catch (Exception ex)
             {
                 Console.WriteLine($"Exception while sending errors: {ex.Message}");
-                // Tuto výjimku už nebudeme přidávat do globálního seznamu,
-                // protože by mohla způsobit nekonečnou rekurzi
             }
         }
     }

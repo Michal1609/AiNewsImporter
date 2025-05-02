@@ -4,7 +4,7 @@ This document serves as a comprehensive reference guide for the AI News Importer
 
 ## Project Overview
 
-AI News Importer is a tool that automatically collects, processes, and imports AI-related news from various sources. It scrapes web content, uses AI to analyze and translate it, and then imports the data into a central news management system.
+AI News Importer is a tool that automatically collects, processes, and imports AI-related news from various sources. It scrapes web content, uses AI to analyze and translate it, and then imports the data into a central news management system (GrznarAi). The application is designed to run as a standalone service that reads news from configured sources, processes them, and sends the results to the API.
 
 ## Project Structure
 
@@ -17,6 +17,9 @@ NewsImporter/
 │       ├── Models/            # Data models
 │       ├── Utilities/         # Helper utilities
 │       ├── Contracts/         # API contract models
+│       │   ├── AddErrors/     # Models for error reporting
+│       │   ├── AddNewsItems/  # Models for news items submission
+│       │   └── GetSources/    # Models for source retrieval
 │       ├── Converters/        # Data conversion utilities
 │       ├── Program.cs         # Application entry point
 │       └── appsettings.json   # Configuration settings
@@ -26,6 +29,11 @@ NewsImporter/
 ## Key Classes and Descriptions
 
 ### Core
+
+#### `IExceptionHandler.cs`
+- Purpose: Interface for global exception handling
+- Methods:
+  - `AddException()`: Adds an exception to the global collection
 
 #### `AppConfig.cs`
 - Purpose: Holds configuration values for the application
@@ -37,11 +45,14 @@ NewsImporter/
 
 #### `NewsImporterApplication.cs`
 - Purpose: Main application orchestration class
+- Implements: `IExceptionHandler`
 - Responsibilities:
   - Initialize services
   - Coordinate the news import process
+  - Collect and handle exceptions
   - Handle error reporting and logging
 - Key methods:
+  - `AddException()`: Adds an exception to the internal collection
   - `RunAsync()`: Main execution method
   - `LoadNewsSourcesAsync()`: Loads news sources from API or fallback file
 
@@ -66,7 +77,7 @@ NewsImporter/
   - Validate configuration
 - Key methods:
   - `LoadConfigAsync()`: Loads and validates the application configuration
-  - `CreateJsonOptions()`: Creates JSON serialization options
+  - `CreateJsonOptions()`: Creates JSON serialization options for consistent serialization
 
 #### `GeminiAiService.cs`
 - Purpose: Interacts with Google's Gemini AI for content analysis
@@ -97,6 +108,8 @@ NewsImporter/
   - Handle browser automation
 - Key methods:
   - `GetPageContentAsync()`: Gets content from a web page
+  - `InitializePlaywrightAsync()`: Initializes the Playwright browser
+  - `DisposeAsync()`: Cleans up resources
 
 #### `SourceFileService.cs`
 - Purpose: Manages source data stored in local files
@@ -106,6 +119,7 @@ NewsImporter/
   - Save sources to local storage
 - Key methods:
   - `LoadSourcesAsync()`: Loads sources from the local file
+  - `SaveSourcesAsync()`: Saves sources to the local file
   - `UpdateSourcesFromApiAsync()`: Updates sources with data from the API
 
 ### Models
@@ -113,11 +127,13 @@ NewsImporter/
 #### `NewsItem.cs`
 - Purpose: Represents a news article
 - Properties:
-  - `Title`: Article title
+  - `Id`: Unique identifier (GUID)
+  - `Title`: Article title in English
+  - `TitleCz`: Article title in Czech
   - `Url`: Article URL
   - `Date`: Publication date
   - `ImageUrl`: URL to the article image
-  - `Text`: Article content
+  - `Text`: Article content in English
   - `ContentCz`: Czech translated content
   - `SummaryCz`: Czech summary
   - `SummaryEn`: English summary
@@ -127,24 +143,38 @@ NewsImporter/
 #### `NewsContent.cs`
 - Purpose: Represents the processed content of a news article
 - Properties:
-  - `PublishDate`: Publication date
+  - `TitleCz`: Czech title
   - `ContentCz`: Czech content
   - `SummaryCz`: Czech summary
   - `SummaryEn`: English summary
+  - `PublishDate`: Publication date
 
 #### `NewsSourceItem.cs`
 - Purpose: Represents a news source
 - Properties:
   - `Url`: URL of the news source
-  - `Type`: Type of the news source
+  - `Type`: Type of the news source (Web, Facebook, Twitter)
   - `LastFetched`: Date when the source was last processed
+
+### Contracts
+
+#### `GetSources/`
+- `AiNewsSourceListResponse.cs`: Container for a list of source responses
+- `AiNewsSourceResponse.cs`: Individual source data from API
+- `SourceType.cs`: Enum defining source types (Web, Facebook, Twitter)
+
+#### `AddNewsItems/`
+- `AiNewsItemRequest.cs`: Model for submitting a news item to the API
+
+#### `AddErrors/`
+- `AiNewsErrorRequest.cs`: Model for submitting error reports to the API
 
 ### Utilities
 
 #### `HtmlCleaner.cs`
 - Purpose: Cleans HTML content
 - Key methods:
-  - `CleanHtml()`: Removes unwanted HTML elements
+  - `CleanHtml()`: Removes unwanted HTML elements and normalizes content
 
 #### `MarkdownConverter.cs`
 - Purpose: Converts HTML to Markdown
@@ -153,12 +183,20 @@ NewsImporter/
 
 ## Key Workflows
 
+### Error Handling Flow
+
+1. Exceptions are caught in individual service methods
+2. Caught exceptions are added to the global collection via `IExceptionHandler.AddException()`
+3. At the end of the process, all collected exceptions are:
+   - Sent to the GrznarAi API via `ApiService.SendErrorsToWebAsync()`
+   - Saved to a local file (exceptions.txt)
+
 ### Application Startup Flow
 
 1. `Program.cs` creates and runs `NewsImporterApplication`
 2. `NewsImporterApplication.RunAsync()` initializes the application:
    - Loads configuration via `ConfigurationService`
-   - Creates service instances
+   - Creates service instances with the exception handler
    - Coordinates the news import process
 
 ### News Import Flow
@@ -229,15 +267,15 @@ The actual API keys should never be stored in this file for security reasons.
 
 ## Important Notes for Development
 
-1. When making code changes, always follow the existing architecture and separation of concerns.
+1. **Exception Handling**: All services now support global exception handling via `IExceptionHandler`. When adding new code with try-catch blocks, always add the caught exceptions to the global collection using `_exceptionHandler.AddException(ex)`.
 
-2. After any significant changes to the codebase, update both `README.md` and `vibememory.md` to reflect these changes.
+2. When making code changes, always follow the existing architecture and separation of concerns.
 
-3. The `ApiService` is responsible for all API communication - do not create separate HTTP clients elsewhere.
+3. After any significant changes to the codebase, update both `README.md` and `vibememory.md` to reflect these changes.
 
-4. When processing dates, be careful with the date filtering logic to avoid missing news items.
+4. The `ApiService` is responsible for all API communication - do not create separate HTTP clients elsewhere.
 
-5. Error handling is important - catch exceptions at appropriate levels and report them through `ApiService.SendErrorsToWebAsync()`.
+5. When processing dates, be careful with the date filtering logic to avoid missing news items.
 
 6. The application is designed to be resilient - it will try to continue processing sources even if some fail.
 
@@ -255,6 +293,7 @@ The actual API keys should never be stored in this file for security reasons.
 2. Examine generated files:
    - `result.json`: Contains the processed news items
    - `exceptions.txt`: Contains error details if any occurred
+   - `sources.txt`: Contains the source configuration information
 
 3. If API connections fail, verify that User Secrets are correctly configured.
 
@@ -265,53 +304,35 @@ The actual API keys should never be stored in this file for security reasons.
 
 ## Common Issues and Solutions
 
-1. **API Connection Issues**: Check User Secrets and network connectivity.
+1. **API Connection Issues**: 
+   - Check User Secrets and network connectivity
+   - Verify the API keys are correctly configured
+   - Check if the API endpoint is accessible
 
-2. **Gemini AI Errors**: Verify the Google API key and check rate limiting.
+2. **Gemini AI Errors**: 
+   - Verify the Google API key is valid and active
+   - Check for rate limiting or quota issues
+   - Ensure the prompt templates haven't changed
 
-3. **Playwright Failures**: Ensure dependencies are installed and check for page structure changes.
+3. **Playwright Failures**: 
+   - Ensure dependencies are installed (`playwright install`)
+   - Check if website structure has changed requiring selector updates
+   - Try different navigation strategies if timeouts occur
 
-4. **No News Found**: Check if source URLs are still valid and if the page structure has changed.
+4. **No News Found**: 
+   - Check if source URLs are still valid
+   - Verify if the page structure has changed
+   - Inspect the raw content to see if news is present but not detected
 
-## Error Handling
-
-The application implements a global error handling mechanism using the `IExceptionHandler` interface. All exceptions caught in try-catch blocks throughout the application are added to a central collection in the `NewsImporterApplication` class.
-
-Error handling flow:
-1. Exceptions are caught in individual service methods
-2. Caught exceptions are added to the global collection via `IExceptionHandler.AddException()`
-3. At the end of the process, all collected exceptions are:
-   - Sent to the GrznarAi API via `ApiService.SendErrorsToWebAsync()`
-   - Saved to a local file (exceptions.txt)
-
-This centralized approach ensures no exceptions are lost, and all error information is properly tracked and reported.
-
-## Configuration
-
-The application uses both appsettings.json and user secrets for configuration. Required settings include:
-- Google API Key for Gemini AI
-- GrznarAi API endpoint and API key
-- Page load timeout settings
-
-## Workflow
-
-1. Load configuration
-2. Initialize services
-3. Load news sources (from API or local file)
-4. Process each news source:
-   - Get web page content
-   - Clean HTML and convert to Markdown
-   - Analyze content using Gemini AI to find AI-related news
-   - For each news item, get additional content details
-   - Translate content to Czech
-5. Save results locally
-6. Send results to GrznarAi API
-7. Send any collected errors to GrznarAi API
+5. **Missing Translations**:
+   - Check if the Gemini AI prompts are returning the expected format
+   - Verify the JSON structure matches the expected model
 
 ## Technical Details
 - Target Framework: .NET 9.0
 - Key Dependencies:
-  - Microsoft.Playwright
-  - System.Text.Json
-  - Microsoft.Extensions.Configuration
-  - Microsoft.Extensions.Http 
+  - Microsoft.Playwright: For web scraping and browser automation
+  - System.Text.Json: For JSON serialization and deserialization
+  - Microsoft.Extensions.Configuration: For configuration management
+  - Microsoft.Extensions.Configuration.UserSecrets: For secure API keys storage
+  - Microsoft.Extensions.Http: For HTTP client factory pattern implementation 
