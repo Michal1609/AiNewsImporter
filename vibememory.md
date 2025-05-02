@@ -271,4 +271,47 @@ The actual API keys should never be stored in this file for security reasons.
 
 3. **Playwright Failures**: Ensure dependencies are installed and check for page structure changes.
 
-4. **No News Found**: Check if source URLs are still valid and if the page structure has changed. 
+4. **No News Found**: Check if source URLs are still valid and if the page structure has changed.
+
+## Error Handling
+
+The application implements a global error handling mechanism using the `IExceptionHandler` interface. All exceptions caught in try-catch blocks throughout the application are added to a central collection in the `NewsImporterApplication` class.
+
+Error handling flow:
+1. Exceptions are caught in individual service methods
+2. Caught exceptions are added to the global collection via `IExceptionHandler.AddException()`
+3. At the end of the process, all collected exceptions are:
+   - Sent to the GrznarAi API via `ApiService.SendErrorsToWebAsync()`
+   - Saved to a local file (exceptions.txt)
+
+This centralized approach ensures no exceptions are lost, and all error information is properly tracked and reported.
+
+## Configuration
+
+The application uses both appsettings.json and user secrets for configuration. Required settings include:
+- Google API Key for Gemini AI
+- GrznarAi API endpoint and API key
+- Page load timeout settings
+
+## Workflow
+
+1. Load configuration
+2. Initialize services
+3. Load news sources (from API or local file)
+4. Process each news source:
+   - Get web page content
+   - Clean HTML and convert to Markdown
+   - Analyze content using Gemini AI to find AI-related news
+   - For each news item, get additional content details
+   - Translate content to Czech
+5. Save results locally
+6. Send results to GrznarAi API
+7. Send any collected errors to GrznarAi API
+
+## Technical Details
+- Target Framework: .NET 9.0
+- Key Dependencies:
+  - Microsoft.Playwright
+  - System.Text.Json
+  - Microsoft.Extensions.Configuration
+  - Microsoft.Extensions.Http 

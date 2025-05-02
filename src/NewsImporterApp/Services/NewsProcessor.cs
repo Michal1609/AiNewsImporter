@@ -15,6 +15,7 @@ namespace NewsImporterApp.Services
         private readonly PlaywrightService _playwrightService;
         private readonly JsonSerializerOptions _jsonOptions;
         private readonly int _pageLoadTimeoutMs;
+        private readonly IExceptionHandler _exceptionHandler;
 
         public NewsProcessor(
             GeminiAiService geminiService,
@@ -22,7 +23,8 @@ namespace NewsImporterApp.Services
             MarkdownConverter markdownConverter,
             PlaywrightService playwrightService,
             JsonSerializerOptions jsonOptions,
-            int pageLoadTimeoutMs)
+            int pageLoadTimeoutMs,
+            IExceptionHandler exceptionHandler)
         {
             _geminiService = geminiService;
             _htmlCleaner = htmlCleaner;
@@ -30,12 +32,12 @@ namespace NewsImporterApp.Services
             _playwrightService = playwrightService;
             _jsonOptions = jsonOptions;
             _pageLoadTimeoutMs = pageLoadTimeoutMs;
+            _exceptionHandler = exceptionHandler;
         }
 
         public async Task<List<NewsItem>> ProcessNewsSourcesAsync(List<NewsSourceItem> newsSources)
         {
             var allNewsItems = new List<NewsItem>();
-            var exceptions = new List<Exception>();
             
             int processedCount = 0;
             int totalSources = newsSources.Count;
@@ -56,7 +58,7 @@ namespace NewsImporterApp.Services
                 catch (Exception ex)
                 {
                     Console.WriteLine($"Error processing source {source.Url}: {ex.Message}");
-                    exceptions.Add(ex);
+                    _exceptionHandler.AddException(ex);
                     continue;
                 }
             }
@@ -69,56 +71,66 @@ namespace NewsImporterApp.Services
         {
             var sourceNewsItems = new List<NewsItem>();
             
-            // Get news from source
-            string htmlContent = await _playwrightService.GetPageContentAsync(source.Url, _pageLoadTimeoutMs);
-            Console.WriteLine("CleanHtml");
-            string cleanedHtml = _htmlCleaner.CleanHtml(htmlContent);
-            Console.WriteLine("ConvertToMarkdown");
-            string markdownContent = _markdownConverter.ConvertToMarkdown(cleanedHtml);
-            Console.WriteLine("GetAllAiNewsFromMarkdownAsync");
-            string markdownAnalysisResult = await _geminiService.GetAllAiNewsFromMarkdownAsync(markdownContent);
-            Console.WriteLine("Removing json text");
-            
-            markdownAnalysisResult = CleanJsonMarkdown(markdownAnalysisResult);
-            
-            Console.WriteLine("Deserializing news items");
-            var newsItems = JsonSerializer.Deserialize<List<NewsItem>>(markdownAnalysisResult, _jsonOptions);
-
-            if (newsItems == null || newsItems.Count == 0)
+            try 
             {
-                Console.WriteLine("No news items were found.");
-                return sourceNewsItems;
-            }
+                // Get news from source
+                string htmlContent = await _playwrightService.GetPageContentAsync(source.Url, _pageLoadTimeoutMs);
+                Console.WriteLine("CleanHtml");
+                string cleanedHtml = _htmlCleaner.CleanHtml(htmlContent);
+                Console.WriteLine("ConvertToMarkdown");
+                string markdownContent = _markdownConverter.ConvertToMarkdown(cleanedHtml);
+                Console.WriteLine("GetAllAiNewsFromMarkdownAsync");
+                string markdownAnalysisResult = await _geminiService.GetAllAiNewsFromMarkdownAsync(markdownContent);
+                Console.WriteLine("Removing json text");
+                
+                markdownAnalysisResult = CleanJsonMarkdown(markdownAnalysisResult);
+                
+                Console.WriteLine("Deserializing news items");
+                var newsItems = JsonSerializer.Deserialize<List<NewsItem>>(markdownAnalysisResult, _jsonOptions);
 
-            newsItems = newsItems.DistinctBy(item => item.Title).ToList();
-
-            foreach (var item in newsItems)
-            {
-                try
+                if (newsItems == null || newsItems.Count == 0)
                 {
-                    if (item.Date != null && item.Date < source.LastFetched.AddDays(-1))
-                        continue;
+                    Console.WriteLine("No news items were found.");
+                    return sourceNewsItems;
+                }
 
-                    var baseUri = new Uri(source.Url);
-                    item.Url = new Uri(baseUri, item.Url).ToString();
+                newsItems = newsItems.DistinctBy(item => item.Title).ToList();
 
-                    // Getting news content
-                    var newsItem = await ProcessNewsItemAsync(item, source);
-                    if (newsItem != null)
+                foreach (var item in newsItems)
+                {
+                    try
                     {
-                        sourceNewsItems.Add(newsItem);
+                        if (item.Date != null && item.Date < source.LastFetched.AddDays(-1))
+                            continue;
+
+                        var baseUri = new Uri(source.Url);
+                        item.Url = new Uri(baseUri, item.Url).ToString();
+
+                        // Getting news content
+                        var newsItem = await ProcessNewsItemAsync(item, source);
+                        if (newsItem != null)
+                        {
+                            sourceNewsItems.Add(newsItem);
+                        }
+                    }
+                    catch (ArgumentNullException ex)
+                    {
+                        Console.WriteLine($"Error processing news content '{item.Title}': {ex.Message}");
+                        _exceptionHandler.AddException(ex);
+                        continue;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error processing news item '{item.Title}': {ex.Message}");
+                        _exceptionHandler.AddException(ex);
+                        continue;
                     }
                 }
-                catch (ArgumentNullException ex)
-                {
-                    Console.WriteLine($"Error processing news content '{item.Title}': {ex.Message}");
-                    continue;
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error processing news item '{item.Title}': {ex.Message}");
-                    continue;
-                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error processing source content from {source.Url}: {ex.Message}");
+                _exceptionHandler.AddException(ex);
             }
             
             return sourceNewsItems;
@@ -126,18 +138,18 @@ namespace NewsImporterApp.Services
 
         private async Task<NewsItem?> ProcessNewsItemAsync(NewsItem item, NewsSourceItem source)
         {
-            // get content for news
-            Console.WriteLine($"Loading news item: {item.Url}");
-            string htmlContent = await _playwrightService.GetPageContentAsync(item.Url, 10000);
-            Console.WriteLine("CleanHtml");
-            string cleanedHtml = _htmlCleaner.CleanHtml(htmlContent);
-            Console.WriteLine("Markdown");
-            string markdownContent = _markdownConverter.ConvertToMarkdown(cleanedHtml);
-            Console.WriteLine("Gemini");
-            string markdownAnalysisResult = await _geminiService.GetContentOfNewFromMarkdownAsync(markdownContent, item.Title);
-            
             try
             {
+                // get content for news
+                Console.WriteLine($"Loading news item: {item.Url}");
+                string htmlContent = await _playwrightService.GetPageContentAsync(item.Url, 10000);
+                Console.WriteLine("CleanHtml");
+                string cleanedHtml = _htmlCleaner.CleanHtml(htmlContent);
+                Console.WriteLine("Markdown");
+                string markdownContent = _markdownConverter.ConvertToMarkdown(cleanedHtml);
+                Console.WriteLine("Gemini");
+                string markdownAnalysisResult = await _geminiService.GetContentOfNewFromMarkdownAsync(markdownContent, item.Title);
+                
                 Console.WriteLine("Testing for json");
                 markdownAnalysisResult = CleanJsonMarkdown(markdownAnalysisResult);
 
@@ -170,7 +182,14 @@ namespace NewsImporterApp.Services
             catch (JsonException ex)
             {
                 Console.WriteLine($"Error deserializing news content '{item.Title}': {ex.Message}");
-                throw;
+                _exceptionHandler.AddException(ex);
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error processing news item '{item.Title}': {ex.Message}");
+                _exceptionHandler.AddException(ex);
+                return null;
             }
         }
 

@@ -19,14 +19,17 @@ namespace NewsImporterApp.Services
         private readonly AppConfig _config;
         private readonly HttpClient _httpClient;
         private readonly JsonSerializerOptions _jsonOptions;
+        private readonly IExceptionHandler? _exceptionHandler;
 
         /// <summary>
         /// Initializes a new instance of the ApiService
         /// </summary>
         /// <param name="config">Application configuration</param>
-        public ApiService(AppConfig config)
+        /// <param name="exceptionHandler">Optional exception handler for global tracking</param>
+        public ApiService(AppConfig config, IExceptionHandler? exceptionHandler = null)
         {
             _config = config;
+            _exceptionHandler = exceptionHandler;
             
             // Create service collection for dependency injection
             var services = new ServiceCollection();
@@ -78,6 +81,7 @@ namespace NewsImporterApp.Services
             catch (Exception ex)
             {
                 Console.WriteLine($"Error getting sources: {ex.Message}");
+                _exceptionHandler?.AddException(ex);
                 return null;
             }
         }
@@ -130,11 +134,15 @@ namespace NewsImporterApp.Services
                     var errorContent = await response.Content.ReadAsStringAsync();
                     Console.WriteLine($"Error sending news: {response.StatusCode}");
                     Console.WriteLine($"Error details: {errorContent}");
+                    
+                    var errorException = new Exception($"Error sending news: {response.StatusCode}. Details: {errorContent}");
+                    _exceptionHandler?.AddException(errorException);
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Exception while sending news: {ex.Message}");
+                _exceptionHandler?.AddException(ex);
             }
         }
 
@@ -185,6 +193,8 @@ namespace NewsImporterApp.Services
             catch (Exception ex)
             {
                 Console.WriteLine($"Exception while sending errors: {ex.Message}");
+                // Tuto výjimku už nebudeme přidávat do globálního seznamu,
+                // protože by mohla způsobit nekonečnou rekurzi
             }
         }
     }

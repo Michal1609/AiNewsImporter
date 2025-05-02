@@ -7,10 +7,12 @@ namespace NewsImporterApp.Services
     public class ConfigurationService
     {
         private readonly JsonSerializerOptions _jsonOptions;
+        private readonly IExceptionHandler? _exceptionHandler;
 
-        public ConfigurationService(JsonSerializerOptions jsonOptions)
+        public ConfigurationService(JsonSerializerOptions jsonOptions, IExceptionHandler? exceptionHandler = null)
         {
             _jsonOptions = jsonOptions;
+            _exceptionHandler = exceptionHandler;
         }
 
         public static JsonSerializerOptions CreateJsonOptions()
@@ -86,6 +88,7 @@ namespace NewsImporterApp.Services
             catch (Exception ex)
             {
                 Console.WriteLine($"Chyba při načítání konfigurace: {ex.Message}");
+                _exceptionHandler?.AddException(ex);
                 return null;
             }
         }

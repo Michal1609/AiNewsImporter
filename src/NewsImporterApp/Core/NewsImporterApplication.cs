@@ -7,7 +7,7 @@ using NewsImporterApp.Services;
 
 namespace NewsImporterApp.Core
 {
-    public class NewsImporterApplication
+    public class NewsImporterApplication : IExceptionHandler
     {
         private readonly ConfigurationService _configService;
         private readonly JsonSerializerOptions _jsonOptions;
@@ -16,7 +16,16 @@ namespace NewsImporterApp.Core
         public NewsImporterApplication()
         {
             _jsonOptions = ConfigurationService.CreateJsonOptions();
-            _configService = new ConfigurationService(_jsonOptions);
+            _configService = new ConfigurationService(_jsonOptions, this);
+        }
+
+        /// <summary>
+        /// Adds an exception to the global collection
+        /// </summary>
+        /// <param name="exception">Exception to add</param>
+        public void AddException(Exception exception)
+        {
+            _exceptions.Add(exception);
         }
 
         public async Task<int> RunAsync()
@@ -30,8 +39,8 @@ namespace NewsImporterApp.Core
             }
 
             // 2. Initializing services
-            var sourceFileService = new SourceFileService();
-            var apiService = new ApiService(config);
+            var sourceFileService = new SourceFileService(this);
+            var apiService = new ApiService(config, this);
             
             // 3. Loading news sources
             var newsSources = await LoadNewsSourcesAsync(sourceFileService, apiService);
@@ -42,11 +51,11 @@ namespace NewsImporterApp.Core
             }
 
             // 4. Initializing content processing services
-            var geminiService = new GeminiAiService();
+            var geminiService = new GeminiAiService(this);
             geminiService.SetApiKey(config.GoogleApiKey);
             var htmlCleaner = new HtmlCleaner();
             var markdownConverter = new MarkdownConverter();
-            var playwrightService = new PlaywrightService();
+            var playwrightService = new PlaywrightService(this);
 
             // 5. Creating news processor
             var newsProcessor = new NewsProcessor(
@@ -55,7 +64,8 @@ namespace NewsImporterApp.Core
                 markdownConverter,
                 playwrightService,
                 _jsonOptions,
-                config.PageLoadTimeoutMs);
+                config.PageLoadTimeoutMs,
+                this);
 
             // 6. Processing news
             var allNewsItems = await newsProcessor.ProcessNewsSourcesAsync(newsSources);
